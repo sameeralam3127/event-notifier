@@ -147,6 +147,7 @@ async def upload_excel(
     file: UploadFile = File(...),
     request: Request = None
 ):
+    sid = get_session_id(request)
     # Validate file extension
     if not file.filename:
         raise HTTPException(
@@ -215,34 +216,69 @@ async def upload_excel(
         email_col = None
 
     # Store in session
-    data = get_session_data(request)
+    data = store.get(sid)
+    if data is None:
+        data = {}
+        store._data[sid] = data
+    
     data["columns"] = columns
     data["rows"] = rows
     data["name_col"] = name_col
     data["email_col"] = email_col
     data["file_path"] = file_path
 
-    return {
+    response = JSONResponse({
         "columns": columns,
         "guessed_name": name_col,
         "guessed_email": email_col,
         "total_rows": len(rows),
         "preview_rows": rows[:5],
-    }
+    })
+    response.set_cookie("session_id", sid, httponly=True)
+    return response
 
 
 @app.post("/api/set-mapping")
 async def set_mapping(mapping: MappingRequest, request: Request):
-    data = get_session_data(request)
-    columns = data.get("columns", [])
-    if mapping.name_col not in columns or mapping.email_col not in columns:
+    sid = get_session_id(request)
+    data = store.get(sid)
+    
+    if not data:
         raise HTTPException(
             status_code=400,
-            detail="Column not found in Excel"
+            detail="Session expired. Please upload Excel file again."
         )
+    
+    columns = data.get("columns", [])
+    
+    if not columns:
+        raise HTTPException(
+            status_code=400,
+            detail="No Excel file uploaded. Please upload a file first."
+        )
+    
+    if mapping.name_col not in columns:
+        available = ', '.join(columns)
+        raise HTTPException(
+            status_code=400,
+            detail=(f"Name column '{mapping.name_col}' not found in Excel. "
+                    f"Available columns: {available}")
+        )
+    
+    if mapping.email_col not in columns:
+        available = ', '.join(columns)
+        raise HTTPException(
+            status_code=400,
+            detail=(f"Email column '{mapping.email_col}' not found in Excel. "
+                    f"Available columns: {available}")
+        )
+    
     data["name_col"] = mapping.name_col
     data["email_col"] = mapping.email_col
-    return {"status": "Mapping saved"}
+    
+    response = JSONResponse({"status": "Mapping saved"})
+    response.set_cookie("session_id", sid, httponly=True)
+    return response
 
 
 @app.post("/api/preview")

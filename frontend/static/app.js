@@ -265,6 +265,198 @@ function populateColumnSelects(columns, guessedName, guessedEmail) {
   if (guessedEmail) emailSel.value = guessedEmail;
 }
 
+// --- Email Templates ---
+const emailTemplates = {
+  "event-confirmation": {
+    subject: "✅ Your Event Registration is Confirmed - {Name}",
+    body: `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+    .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+    .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎉 Registration Confirmed!</h1>
+    </div>
+    <div class="content">
+      <p>Dear <strong>{Name}</strong>,</p>
+      <p>Great news! Your registration for our event has been successfully confirmed.</p>
+      <p><strong>Event Details:</strong></p>
+      <ul>
+        <li>📅 Date: [Event Date]</li>
+        <li>🕐 Time: [Event Time]</li>
+        <li>📍 Location: [Event Location]</li>
+      </ul>
+      <p>We're excited to have you join us! Please keep this email for your records.</p>
+      <p>If you have any questions, feel free to reply to this email.</p>
+      <p>See you at the event!</p>
+      <p>Best regards,<br><strong>The Event Team</strong></p>
+    </div>
+    <div class="footer">
+      <p>This is an automated confirmation email. Please do not reply directly to this message.</p>
+    </div>
+  </div>
+</body>
+</html>`,
+  },
+  "event-reminder": {
+    subject: "⏰ Reminder: Event Tomorrow - {Name}",
+    body: `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+    .highlight { background: #fef3c7; padding: 15px; border-left: 4px solid #f59e0b; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⏰ Event Reminder</h1>
+    </div>
+    <div class="content">
+      <p>Hi <strong>{Name}</strong>,</p>
+      <p>This is a friendly reminder that our event is coming up soon!</p>
+      <div class="highlight">
+        <p><strong>📅 Tomorrow at [Event Time]</strong></p>
+        <p>📍 Location: [Event Location]</p>
+      </div>
+      <p>We're looking forward to seeing you there. Don't forget to bring:</p>
+      <ul>
+        <li>Your confirmation email</li>
+        <li>Valid ID</li>
+        <li>Any materials mentioned in previous communications</li>
+      </ul>
+      <p>See you soon!</p>
+      <p>Best regards,<br><strong>The Event Team</strong></p>
+    </div>
+  </div>
+</body>
+</html>`,
+  },
+  "event-invitation": {
+    subject: "🎉 You're Invited! Join Us for [Event Name]",
+    body: `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+    .button { display: inline-block; background: #4facfe; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎉 You're Invited!</h1>
+    </div>
+    <div class="content">
+      <p>Dear <strong>{Name}</strong>,</p>
+      <p>We are delighted to invite you to our upcoming event!</p>
+      <p><strong>Event Details:</strong></p>
+      <ul>
+        <li>📅 Date: [Event Date]</li>
+        <li>🕐 Time: [Event Time]</li>
+        <li>📍 Venue: [Event Location]</li>
+      </ul>
+      <p>This is a special opportunity to [brief description of event purpose].</p>
+      <p>Please RSVP by [RSVP Date] to confirm your attendance.</p>
+      <p>We hope to see you there!</p>
+      <p>Warm regards,<br><strong>The Event Team</strong></p>
+    </div>
+  </div>
+</body>
+</html>`,
+  },
+  "event-update": {
+    subject: "📢 Important Update: Event Information - {Name}",
+    body: `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+    .alert { background: #dbeafe; padding: 15px; border-left: 4px solid #3b82f6; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📢 Event Update</h1>
+    </div>
+    <div class="content">
+      <p>Hi <strong>{Name}</strong>,</p>
+      <p>We have an important update regarding the upcoming event:</p>
+      <div class="alert">
+        <p><strong>What's Changed:</strong></p>
+        <p>[Describe the update or change here]</p>
+      </div>
+      <p><strong>Updated Event Details:</strong></p>
+      <ul>
+        <li>📅 Date: [Event Date]</li>
+        <li>🕐 Time: [Event Time]</li>
+        <li>📍 Location: [Event Location]</li>
+      </ul>
+      <p>Your registration remains valid. If you have any questions or concerns, please don't hesitate to contact us.</p>
+      <p>Thank you for your understanding!</p>
+      <p>Best regards,<br><strong>The Event Team</strong></p>
+    </div>
+  </div>
+</body>
+</html>`,
+  },
+  "thank-you": {
+    subject: "🙏 Thank You for Attending - {Name}",
+    body: `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #333; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🙏 Thank You!</h1>
+    </div>
+    <div class="content">
+      <p>Dear <strong>{Name}</strong>,</p>
+      <p>Thank you so much for attending our event! We hope you found it valuable and enjoyable.</p>
+      <p>Your participation made the event a great success, and we truly appreciate your time and engagement.</p>
+      <p><strong>What's Next:</strong></p>
+      <ul>
+        <li>Event materials and resources will be shared soon</li>
+        <li>We'd love to hear your feedback</li>
+        <li>Stay tuned for future events</li>
+      </ul>
+      <p>If you have any questions or feedback, please feel free to reach out to us.</p>
+      <p>We look forward to seeing you at our next event!</p>
+      <p>With gratitude,<br><strong>The Event Team</strong></p>
+    </div>
+  </div>
+</body>
+</html>`,
+  },
+};
+
 // --- Mapping ---
 document.getElementById("save-mapping").addEventListener("click", async () => {
   const nameCol = document.getElementById("name-col-select").value;
@@ -284,10 +476,29 @@ document.getElementById("save-mapping").addEventListener("click", async () => {
     await api("/api/set-mapping", "POST", mapping);
     document.getElementById("template-section").classList.remove("hidden");
     showSuccess("Column mapping saved");
+
+    // Initialize template selector
+    initializeTemplateSelector();
   } catch (e) {
     showError("Mapping error: " + e.message);
   }
 });
+
+// --- Template Selector ---
+function initializeTemplateSelector() {
+  const selector = document.getElementById("template-selector");
+  if (!selector) return;
+
+  selector.addEventListener("change", (e) => {
+    const templateKey = e.target.value;
+    if (templateKey && emailTemplates[templateKey]) {
+      const template = emailTemplates[templateKey];
+      document.getElementById("subject-tpl").value = template.subject;
+      document.getElementById("body-tpl").value = template.body;
+      showSuccess("Template loaded! You can customize it as needed.");
+    }
+  });
+}
 
 // --- Preview ---
 document.getElementById("preview-btn").addEventListener("click", async () => {
