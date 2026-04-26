@@ -26,6 +26,10 @@ def send_test_email(config: Dict, to_email: str) -> Dict:
         return result
 
     try:
+        # Sanitize credentials to remove non-ASCII characters and whitespace
+        username = config["username"].strip().replace('\xa0', ' ').strip()
+        password = config["password"].strip().replace('\xa0', ' ').strip()
+        
         msg = MIMEMultipart()
         msg["From"] = config["from_email"]
         msg["To"] = to_email
@@ -44,7 +48,7 @@ def send_test_email(config: Dict, to_email: str) -> Dict:
             if use_tls:
                 server.starttls()
 
-        server.login(config["username"], config["password"])
+        server.login(username, password)
         server.send_message(msg)
         server.quit()
 
@@ -97,6 +101,10 @@ def send_bulk_emails(
     use_ssl = config["port"] == 465
     use_tls = config["port"] == 587
 
+    # Sanitize credentials to remove non-ASCII characters and whitespace
+    username = config["username"].strip().replace('\xa0', ' ').strip()
+    password = config["password"].strip().replace('\xa0', ' ').strip()
+
     server = None
     try:
         if use_ssl:
@@ -105,7 +113,7 @@ def send_bulk_emails(
             server = smtplib.SMTP(config["host"], config["port"], timeout=15)
             if use_tls:
                 server.starttls()
-        server.login(config["username"], config["password"])
+        server.login(username, password)
     except Exception as e:
         logger.exception("SMTP connection failed")
         return [

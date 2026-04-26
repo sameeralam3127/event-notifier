@@ -1,5 +1,8 @@
 {% extends "base.html" %} {% block content %}
 <div id="app">
+  <!-- Statistics Dashboard -->
+  <div id="stats-display" class="hidden mb-6"></div>
+
   <!-- Step progression -->
   <div class="flex justify-between mb-8 p-4 bg-white rounded-lg shadow">
     <div class="step-item flex-1 text-center" data-step="1">
@@ -102,20 +105,26 @@
         />
       </div>
     </div>
-    <div class="mt-4 flex space-x-4">
+    <div class="mt-4 flex flex-wrap gap-4">
       <button
         id="save-smtp"
-        class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow"
+        class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow transition"
       >
         Save SMTP
       </button>
       <button
         id="test-smtp"
-        class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded shadow"
+        class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded shadow transition"
       >
         Test Connection
       </button>
-      <span id="smtp-status" class="self-center text-sm"></span>
+      <button
+        id="view-history-btn"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow transition"
+      >
+        📊 View History
+      </button>
+      <span id="smtp-status" class="self-center text-sm font-medium"></span>
     </div>
   </section>
 
