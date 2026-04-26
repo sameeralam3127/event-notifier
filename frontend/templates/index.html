@@ -1,0 +1,243 @@
+{% extends "base.html" %} {% block content %}
+<div id="app">
+  <!-- Step progression -->
+  <div class="flex justify-between mb-8 p-4 bg-white rounded-lg shadow">
+    <div class="step-item flex-1 text-center" data-step="1">
+      <div
+        class="step-circle w-8 h-8 mx-auto rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold"
+      >
+        1
+      </div>
+      <span class="mt-2 block text-sm font-medium">SMTP Config</span>
+    </div>
+    <div class="step-item flex-1 text-center" data-step="2">
+      <div
+        class="step-circle w-8 h-8 mx-auto rounded-full bg-gray-300 text-white flex items-center justify-center font-bold"
+      >
+        2
+      </div>
+      <span class="mt-2 block text-sm font-medium">Upload Excel</span>
+    </div>
+    <div class="step-item flex-1 text-center" data-step="3">
+      <div
+        class="step-circle w-8 h-8 mx-auto rounded-full bg-gray-300 text-white flex items-center justify-center font-bold"
+      >
+        3
+      </div>
+      <span class="mt-2 block text-sm font-medium">Map & Preview</span>
+    </div>
+    <div class="step-item flex-1 text-center" data-step="4">
+      <div
+        class="step-circle w-8 h-8 mx-auto rounded-full bg-gray-300 text-white flex items-center justify-center font-bold"
+      >
+        4
+      </div>
+      <span class="mt-2 block text-sm font-medium">Send & Result</span>
+    </div>
+  </div>
+
+  <!-- Step 1: SMTP -->
+  <section id="step1" class="bg-white p-6 rounded-lg shadow mb-8">
+    <h2 class="text-xl font-semibold mb-4">1. SMTP Configuration</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">SMTP Host</label>
+        <input
+          type="text"
+          id="smtp_host"
+          placeholder="smtp.gmail.com"
+          class="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Port</label>
+        <select
+          id="smtp_port"
+          class="mt-1 block w-full rounded border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+        >
+          <option value="587">587 (TLS)</option>
+          <option value="465">465 (SSL)</option>
+          <option value="25">25 (Unencrypted)</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700"
+          >Username (email)</label
+        >
+        <input
+          type="email"
+          id="smtp_user"
+          placeholder="you@gmail.com"
+          class="mt-1 block w-full rounded border-gray-300 shadow-sm"
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700"
+          >Password / App Password</label
+        >
+        <input
+          type="password"
+          id="smtp_pass"
+          class="mt-1 block w-full rounded border-gray-300 shadow-sm"
+        />
+        <p class="text-xs text-gray-500 mt-1">
+          For Gmail:
+          <a
+            href="https://support.google.com/accounts/answer/185833"
+            target="_blank"
+            class="text-indigo-600 underline"
+            >create an App Password</a
+          >
+        </p>
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium text-gray-700"
+          >From Email</label
+        >
+        <input
+          type="email"
+          id="from_email"
+          placeholder="you@example.com"
+          class="mt-1 block w-full rounded border-gray-300 shadow-sm"
+        />
+      </div>
+    </div>
+    <div class="mt-4 flex space-x-4">
+      <button
+        id="save-smtp"
+        class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow"
+      >
+        Save SMTP
+      </button>
+      <button
+        id="test-smtp"
+        class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded shadow"
+      >
+        Test Connection
+      </button>
+      <span id="smtp-status" class="self-center text-sm"></span>
+    </div>
+  </section>
+
+  <!-- Step 2: Upload -->
+  <section id="step2" class="bg-white p-6 rounded-lg shadow mb-8">
+    <h2 class="text-xl font-semibold mb-4">2. Upload Excel File</h2>
+    <input
+      type="file"
+      id="excel-file"
+      accept=".xlsx,.xls"
+      class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+    />
+    <p class="text-xs text-gray-500 mt-2">
+      Only .xlsx / .xls files. First row must be column headers.
+    </p>
+    <div id="upload-preview" class="mt-4 hidden">
+      <h3 class="font-medium text-gray-700">Preview (first 5 rows)</h3>
+      <div class="overflow-x-auto mt-2 border rounded">
+        <table class="min-w-full text-sm" id="preview-table"></table>
+      </div>
+      <p class="text-gray-600 mt-1">
+        <span id="row-count"></span> rows loaded.
+      </p>
+    </div>
+  </section>
+
+  <!-- Step 3: Map & Template -->
+  <section id="step3" class="bg-white p-6 rounded-lg shadow mb-8 hidden">
+    <h2 class="text-xl font-semibold mb-4">3. Map Columns & Compose Message</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium">Name Column</label>
+        <select
+          id="name-col-select"
+          class="mt-1 block w-full rounded border-gray-300"
+        ></select>
+        <p class="text-xs text-gray-500 mt-1">Auto‑detected if possible.</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Email Column</label>
+        <select
+          id="email-col-select"
+          class="mt-1 block w-full rounded border-gray-300"
+        ></select>
+        <p class="text-xs text-gray-500 mt-1">
+          Must contain valid email addresses.
+        </p>
+      </div>
+    </div>
+    <button
+      id="save-mapping"
+      class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow"
+    >
+      Confirm Mapping
+    </button>
+
+    <div id="template-section" class="mt-6 hidden">
+      <h3 class="font-medium text-gray-700">Message Template</h3>
+      <p class="text-xs text-gray-500">
+        Use <code>{ColumnName}</code> to insert data (e.g., <code>{Name}</code>,
+        <code>{Email}</code>).
+      </p>
+      <div class="mt-2">
+        <label class="block text-sm">Subject</label>
+        <input
+          type="text"
+          id="subject-tpl"
+          placeholder="Hi {Name}, invitation to our event"
+          class="mt-1 block w-full rounded border-gray-300"
+        />
+      </div>
+      <div class="mt-2">
+        <label class="block text-sm">Body (HTML allowed)</label>
+        <textarea
+          id="body-tpl"
+          rows="6"
+          placeholder="Dear {Name},<br><br>You are invited...<br><br>Best regards"
+          class="mt-1 block w-full rounded border-gray-300"
+        ></textarea>
+      </div>
+      <button
+        id="preview-btn"
+        class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow"
+      >
+        Preview Emails
+      </button>
+    </div>
+  </section>
+
+  <!-- Step 4: Preview & Send -->
+  <section id="step4" class="bg-white p-6 rounded-lg shadow mb-8 hidden">
+    <h2 class="text-xl font-semibold mb-4">4. Preview & Send</h2>
+    <div id="preview-container" class="mb-6 hidden">
+      <h3 class="font-medium">Merged Preview (up to 5)</h3>
+      <div id="preview-cards" class="space-y-4 mt-3"></div>
+    </div>
+    <div class="flex space-x-4">
+      <button
+        id="send-all"
+        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded shadow hidden"
+      >
+        Send to All
+      </button>
+      <span id="send-status" class="self-center text-sm"></span>
+    </div>
+    <div id="results-container" class="mt-6 hidden">
+      <h3 class="text-xl font-semibold mb-2">Results</h3>
+      <div id="results-summary" class="flex space-x-4 mb-4"></div>
+      <div class="overflow-x-auto border rounded">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="p-2">Email</th>
+              <th class="p-2">Name</th>
+              <th class="p-2">Status</th>
+              <th class="p-2">Error</th>
+            </tr>
+          </thead>
+          <tbody id="results-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
