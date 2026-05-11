@@ -1,20 +1,21 @@
+import os
 import sqlite3
-import json
-from datetime import datetime
 from typing import Dict, List, Optional
 import logging
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = Path("/app/data/event_notifier.db")
+DB_PATH = Path(os.getenv("EVENT_NOTIFIER_DB_PATH", "/app/data/event_notifier.db"))
 
 
 def get_db_connection():
     """Get a database connection."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = sqlite3.connect(str(DB_PATH), timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
 
@@ -222,6 +223,9 @@ def get_email_history(
         conn = get_db_connection()
         cursor = conn.cursor()
 
+        limit = max(1, min(int(limit), 500))
+        offset = max(0, int(offset))
+
         if batch_id:
             cursor.execute("""
                 SELECT * FROM email_history 
@@ -248,6 +252,7 @@ def get_email_history(
 def get_batch_history(limit: int = 50) -> List[Dict]:
     """Get batch send history."""
     try:
+        limit = max(1, min(int(limit), 200))
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("""

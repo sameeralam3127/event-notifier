@@ -1,8 +1,10 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 from typing import Dict, Optional, List
 import logging
+import ssl
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +14,7 @@ def validate_smtp_config(config: Dict) -> Optional[str]:
     for field in required:
         if not config.get(field):
             return f"Missing SMTP field: {field}"
-    if config["port"] not in (25, 465, 587):
+    if int(config["port"]) not in (25, 465, 587):
         return "Invalid port (use 25, 465, or 587)"
     return None
 
@@ -38,15 +40,18 @@ def send_test_email(config: Dict, to_email: str) -> Dict:
             MIMEText("This is a test email to verify your SMTP settings.", "plain")
         )
 
-        use_ssl = config["port"] == 465
-        use_tls = config["port"] == 587
+        use_ssl = int(config["port"]) == 465
+        use_tls = int(config["port"]) == 587
+        context = ssl.create_default_context()
 
         if use_ssl:
-            server = smtplib.SMTP_SSL(config["host"], config["port"], timeout=10)
+            server = smtplib.SMTP_SSL(
+                config["host"], int(config["port"]), timeout=10, context=context
+            )
         else:
-            server = smtplib.SMTP(config["host"], config["port"], timeout=10)
+            server = smtplib.SMTP(config["host"], int(config["port"]), timeout=10)
             if use_tls:
-                server.starttls()
+                server.starttls(context=context)
 
         server.login(username, password)
         server.send_message(msg)
@@ -98,8 +103,9 @@ def send_bulk_emails(
             for r in recipients
         ]
 
-    use_ssl = config["port"] == 465
-    use_tls = config["port"] == 587
+    use_ssl = int(config["port"]) == 465
+    use_tls = int(config["port"]) == 587
+    context = ssl.create_default_context()
 
     # Sanitize credentials to remove non-ASCII characters and whitespace
     username = config["username"].strip().replace('\xa0', ' ').strip()
@@ -108,11 +114,13 @@ def send_bulk_emails(
     server = None
     try:
         if use_ssl:
-            server = smtplib.SMTP_SSL(config["host"], config["port"], timeout=15)
+            server = smtplib.SMTP_SSL(
+                config["host"], int(config["port"]), timeout=15, context=context
+            )
         else:
-            server = smtplib.SMTP(config["host"], config["port"], timeout=15)
+            server = smtplib.SMTP(config["host"], int(config["port"]), timeout=15)
             if use_tls:
-                server.starttls()
+                server.starttls(context=context)
         server.login(username, password)
     except Exception as e:
         logger.exception("SMTP connection failed")
@@ -145,7 +153,7 @@ def send_bulk_emails(
                 continue
 
             msg = MIMEMultipart("alternative")
-            msg["From"] = config["from_email"]
+            msg["From"] = formataddr(("", config["from_email"]))
             msg["To"] = to_email
             msg["Subject"] = subject
             msg.attach(MIMEText(body, "html"))

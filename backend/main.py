@@ -2,10 +2,11 @@ from fastapi import FastAPI, Request, File, UploadFile, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field, field_validator
 import os
-import shutil
 import uuid
+import logging
+from pathlib import Path
 from .session_store import store
 from .excel_parser import (
     read_excel,
@@ -17,12 +18,36 @@ from .smtp_handler import send_test_email, send_bulk_emails, validate_smtp_confi
 from .mail_merger import preview_emails
 from . import database
 
-app = FastAPI(title="Event Notification Sender")
+logger = logging.getLogger(__name__)
+
+APP_ENV = os.getenv("APP_ENV", "production").lower()
+SECURE_COOKIES = os.getenv("EVENT_NOTIFIER_SECURE_COOKIES", "false").lower() == "true"
+UPLOAD_DIR = Path(os.getenv("EVENT_NOTIFIER_UPLOAD_DIR", "uploads"))
+MAX_UPLOAD_MB = int(os.getenv("EVENT_NOTIFIER_MAX_UPLOAD_MB", "10"))
+MAX_RECIPIENTS = int(os.getenv("EVENT_NOTIFIER_MAX_RECIPIENTS", "1000"))
+MAX_TEMPLATE_CHARS = int(os.getenv("EVENT_NOTIFIER_MAX_TEMPLATE_CHARS", "50000"))
+
+app = FastAPI(
+    title="Event Notification Sender",
+    docs_url="/docs" if APP_ENV != "production" else None,
+    redoc_url="/redoc" if APP_ENV != "production" else None,
+)
 templates = Jinja2Templates(directory="frontend/templates")
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "same-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if APP_ENV == "production":
+        response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 # Initialize database on startup
@@ -50,21 +75,37 @@ def get_session_data(request: Request):
 
 # --- API models ---
 class SMTPConfig(BaseModel):
-    host: str
-    port: int
-    username: str
-    password: str
-    from_email: str
+    host: str = Field(min_length=1, max_length=255)
+    port: int = Field(ge=1, le=65535)
+    username: str = Field(min_length=1, max_length=255)
+    password: str = Field(min_length=1, max_length=2048)
+    from_email: EmailStr
+
+    @field_validator("host", "username", "password", mode="before")
+    @classmethod
+    def strip_text(cls, value: str) -> str:
+        return str(value).strip().replace("\xa0", " ")
 
 
 class MappingRequest(BaseModel):
-    name_col: str
-    email_col: str
+    name_col: str = Field(min_length=1, max_length=255)
+    email_col: str = Field(min_length=1, max_length=255)
 
 
 class TemplateRequest(BaseModel):
-    subject: str
-    body: str
+    subject: str = Field(min_length=1, max_length=998)
+    body: str = Field(min_length=1, max_length=MAX_TEMPLATE_CHARS)
+
+
+def set_session_cookie(response: JSONResponse | HTMLResponse, sid: str):
+    response.set_cookie(
+        "session_id",
+        sid,
+        httponly=True,
+        samesite="lax",
+        secure=SECURE_COOKIES,
+        max_age=12 * 60 * 60,
+    )
 
 
 # --- Routes ---
@@ -78,7 +119,7 @@ async def index(request: Request):
     # Set session cookie if not present
     if not request.cookies.get("session_id"):
         sid = store.create_session()
-        response.set_cookie("session_id", sid, httponly=True)
+        set_session_cookie(response, sid)
     return response
 
 
@@ -90,14 +131,19 @@ async def configure_smtp(config: SMTPConfig, request: Request):
         data = {}
         store._data[sid] = data
 
-    config_dict = config.dict()
+    config_dict = config.model_dump()
+    error = validate_smtp_config(config_dict)
+    if error:
+        raise HTTPException(status_code=400, detail=error)
+
     data["smtp"] = config_dict
 
     # Save to database for persistence
-    database.save_smtp_config(config_dict)
+    if not database.save_smtp_config(config_dict):
+        raise HTTPException(status_code=500, detail="Failed to save SMTP configuration")
 
     response = JSONResponse({"status": "SMTP configuration saved"})
-    response.set_cookie("session_id", sid, httponly=True)
+    set_session_cookie(response, sid)
     return response
 
 
@@ -138,7 +184,7 @@ async def test_smtp(request: Request):
 
     result = send_test_email(smtp, smtp["from_email"])
     response = JSONResponse(result)
-    response.set_cookie("session_id", sid, httponly=True)
+    set_session_cookie(response, sid)
     return response
 
 
@@ -154,7 +200,8 @@ async def upload_excel(
             status_code=400, detail="No file provided"
         )
 
-    if not file.filename.endswith((".xlsx", ".xls")):
+    suffix = Path(file.filename).suffix.lower()
+    if suffix not in {".xlsx", ".xls"}:
         raise HTTPException(
             status_code=400,
             detail="Only .xlsx or .xls files allowed"
@@ -162,29 +209,29 @@ async def upload_excel(
 
     # Check file size (max 10MB)
     file_content = await file.read()
-    if len(file_content) > 10 * 1024 * 1024:
+    if len(file_content) > MAX_UPLOAD_MB * 1024 * 1024:
         raise HTTPException(
             status_code=400,
-            detail="File too large. Maximum size is 10MB"
+            detail=f"File too large. Maximum size is {MAX_UPLOAD_MB}MB"
         )
 
     # Save file
-    file_path = os.path.join(UPLOAD_DIR, f"temp_{file.filename}")
+    file_path = UPLOAD_DIR / f"{sid}_{uuid.uuid4().hex}{suffix}"
     try:
         with open(file_path, "wb") as buffer:
             buffer.write(file_content)
     except Exception as e:
+        logger.exception("Failed to save uploaded file")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to save file: {str(e)}"
+            detail="Failed to save file"
         )
 
     try:
         columns, rows = read_excel(file_path)
     except Exception as e:
         # Clean up file on error
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        file_path.unlink(missing_ok=True)
         raise HTTPException(
             status_code=400,
             detail=f"Error reading Excel: {str(e)}"
@@ -203,10 +250,10 @@ async def upload_excel(
             detail="Excel file has no data rows"
         )
 
-    if len(rows) > 1000:
+    if len(rows) > MAX_RECIPIENTS:
         raise HTTPException(
             status_code=400,
-            detail="Too many rows. Maximum is 1000 recipients per batch"
+            detail=f"Too many rows. Maximum is {MAX_RECIPIENTS} recipients per batch"
         )
 
     # Auto-guess columns
@@ -225,7 +272,7 @@ async def upload_excel(
     data["rows"] = rows
     data["name_col"] = name_col
     data["email_col"] = email_col
-    data["file_path"] = file_path
+    data["file_path"] = str(file_path)
 
     response = JSONResponse({
         "columns": columns,
@@ -234,7 +281,7 @@ async def upload_excel(
         "total_rows": len(rows),
         "preview_rows": rows[:5],
     })
-    response.set_cookie("session_id", sid, httponly=True)
+    set_session_cookie(response, sid)
     return response
 
 
@@ -277,7 +324,7 @@ async def set_mapping(mapping: MappingRequest, request: Request):
     data["email_col"] = mapping.email_col
     
     response = JSONResponse({"status": "Mapping saved"})
-    response.set_cookie("session_id", sid, httponly=True)
+    set_session_cookie(response, sid)
     return response
 
 
@@ -439,5 +486,10 @@ async def get_statistics():
     """Get overall email sending statistics."""
     stats = database.get_statistics()
     return stats
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 # Made with Bob

@@ -44,6 +44,12 @@ cd event-notifier
 docker-compose up -d
 ```
 
+For local development with hot reloading:
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+
 ### Option 3: Build from Source
 
 ```bash
@@ -154,7 +160,12 @@ You can customize the application using environment variables:
 ```bash
 docker run -d \
   -p 8000:8000 \
-  -e PYTHONUNBUFFERED=1 \
+  -e APP_ENV=production \
+  -e EVENT_NOTIFIER_MAX_UPLOAD_MB=10 \
+  -e EVENT_NOTIFIER_MAX_RECIPIENTS=1000 \
+  -e EVENT_NOTIFIER_SECURE_COOKIES=false \
+  -e EVENT_NOTIFIER_DB_PATH=/app/data/event_notifier.db \
+  -e EVENT_NOTIFIER_UPLOAD_DIR=/app/uploads \
   -v $(pwd)/uploads:/app/uploads \
   -v $(pwd)/data:/app/data \
   event-notifier
@@ -165,6 +176,15 @@ docker run -d \
 - `/app/uploads` - Temporary storage for uploaded Excel files
 - `/app/data` - SQLite database for persistent storage
 
+### Production Defaults
+
+- Runs as a non-root container user
+- Includes `/health` for container and load-balancer checks
+- Hides FastAPI docs when `APP_ENV=production`
+- Adds browser security headers and HTTP-only session cookies
+- Supports `EVENT_NOTIFIER_SECURE_COOKIES=true` when served behind HTTPS
+- Uses named Docker volumes in production compose and bind mounts in dev compose
+
 ## 🛡️ Security Features
 
 - **Password Sanitization**: Removes non-ASCII characters that cause authentication errors
@@ -173,6 +193,7 @@ docker run -d \
 - **Recipient Limits**: Maximum 1000 recipients per batch
 - **Password Masking**: Passwords are masked when retrieving saved config
 - **Session Management**: Secure session handling with HTTP-only cookies
+- **Safe Rendering**: Uploaded spreadsheet values and history data are escaped in the UI
 
 ## 📊 API Endpoints
 
@@ -188,6 +209,7 @@ The application provides REST API endpoints:
 - `GET /api/email-history` - Get email send history
 - `GET /api/batch-history` - Get batch history
 - `GET /api/statistics` - Get overall statistics
+- `GET /health` - Health check endpoint
 
 ## 🐛 Troubleshooting
 
@@ -212,28 +234,6 @@ If you see "UnicodeEncodeError" or authentication failures:
 - Check firewall settings
 - For Gmail, ensure "Less secure app access" is not required
 - Test with the built-in connection test feature
-
-## 🏗️ Architecture
-
-```
-event-notifier/
-├── backend/
-│   ├── main.py           # FastAPI application
-│   ├── database.py       # SQLite database handlers
-│   ├── smtp_handler.py   # Email sending logic
-│   ├── excel_parser.py   # Excel file processing
-│   ├── mail_merger.py    # Template merging
-│   └── session_store.py  # Session management
-├── frontend/
-│   ├── static/
-│   │   └── app.js        # Frontend JavaScript
-│   └── templates/
-│       ├── base.html     # Base template
-│       └── index.html    # Main UI
-├── Dockerfile            # Container definition
-├── docker-compose.yml    # Docker Compose config
-└── README.md            # This file
-```
 
 ## 🤝 Contributing
 

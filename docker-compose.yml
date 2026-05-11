@@ -1,11 +1,36 @@
-version: "3.8"
 services:
   event-notifier:
-    build: .
+    build:
+      context: .
+      target: runtime
+    image: event-notifier:latest
     ports:
       - "8000:8000"
     volumes:
-      - ./uploads:/app/uploads
-      - ./data:/app/data
+      - event_notifier_uploads:/app/uploads
+      - event_notifier_data:/app/data
     environment:
-      - PYTHONUNBUFFERED=1
+      APP_ENV: production
+      PYTHONUNBUFFERED: "1"
+      EVENT_NOTIFIER_MAX_UPLOAD_MB: "10"
+      EVENT_NOTIFIER_MAX_RECIPIENTS: "1000"
+      EVENT_NOTIFIER_SECURE_COOKIES: "false"
+      EVENT_NOTIFIER_DB_PATH: /app/data/event_notifier.db
+      EVENT_NOTIFIER_UPLOAD_DIR: /app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).read()",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  event_notifier_uploads:
+  event_notifier_data:

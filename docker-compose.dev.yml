@@ -1,0 +1,31 @@
+services:
+  event-notifier:
+    build:
+      context: .
+      target: runtime
+    image: event-notifier:dev
+    command:
+      [
+        "uvicorn",
+        "backend.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+      ]
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
+      - ./uploads:/app/uploads
+      - ./data:/app/data
+    environment:
+      APP_ENV: development
+      PYTHONUNBUFFERED: "1"
+      EVENT_NOTIFIER_MAX_UPLOAD_MB: "10"
+      EVENT_NOTIFIER_MAX_RECIPIENTS: "1000"
+      EVENT_NOTIFIER_SECURE_COOKIES: "false"
+      EVENT_NOTIFIER_DB_PATH: /app/data/event_notifier.db
+      EVENT_NOTIFIER_UPLOAD_DIR: /app/uploads

@@ -11,6 +11,15 @@ const api = (url, method = "GET", body = null) => {
   });
 };
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 // --- Validation ---
 function validateEmail(email) {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -60,6 +69,19 @@ function showSuccess(message) {
   setTimeout(() => toast.remove(), 3000);
 }
 
+function updateTemplateCounters() {
+  const subject = document.getElementById("subject-tpl")?.value || "";
+  const body = document.getElementById("body-tpl")?.value || "";
+  const subjectCounter = document.getElementById("subject-counter");
+  const bodyCounter = document.getElementById("body-counter");
+  if (subjectCounter) {
+    subjectCounter.textContent = `${subject.length} / 998 characters`;
+    subjectCounter.className =
+      "mt-1 text-xs " + (subject.length > 998 ? "text-red-600" : "text-gray-500");
+  }
+  if (bodyCounter) bodyCounter.textContent = `${body.length} characters`;
+}
+
 // --- Step navigation ---
 function setActiveStep(step) {
   document.querySelectorAll(".step-item").forEach((el) => {
@@ -100,20 +122,20 @@ async function loadStatistics() {
     if (stats.total_emails > 0) {
       statsDiv.innerHTML = `
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          <div class="bg-blue-50 p-4 rounded-lg">
-            <div class="text-2xl font-bold text-blue-600">${stats.total_emails}</div>
+          <div class="bg-blue-50 p-4 rounded-lg border border-blue-100">
+            <div class="text-2xl font-bold text-blue-600">${escapeHtml(stats.total_emails)}</div>
             <div class="text-sm text-gray-600">Total Emails</div>
           </div>
-          <div class="bg-green-50 p-4 rounded-lg">
-            <div class="text-2xl font-bold text-green-600">${stats.successful_emails}</div>
+          <div class="bg-green-50 p-4 rounded-lg border border-green-100">
+            <div class="text-2xl font-bold text-green-600">${escapeHtml(stats.successful_emails)}</div>
             <div class="text-sm text-gray-600">Successful</div>
           </div>
-          <div class="bg-red-50 p-4 rounded-lg">
-            <div class="text-2xl font-bold text-red-600">${stats.failed_emails}</div>
+          <div class="bg-red-50 p-4 rounded-lg border border-red-100">
+            <div class="text-2xl font-bold text-red-600">${escapeHtml(stats.failed_emails)}</div>
             <div class="text-sm text-gray-600">Failed</div>
           </div>
-          <div class="bg-purple-50 p-4 rounded-lg">
-            <div class="text-2xl font-bold text-purple-600">${stats.success_rate}%</div>
+          <div class="bg-amber-50 p-4 rounded-lg border border-amber-100">
+            <div class="text-2xl font-bold text-amber-700">${escapeHtml(stats.success_rate)}%</div>
             <div class="text-sm text-gray-600">Success Rate</div>
           </div>
         </div>
@@ -130,6 +152,10 @@ document.addEventListener("DOMContentLoaded", () => {
   loadSavedSMTPConfig();
   loadStatistics();
   setActiveStep(1);
+  document
+    .querySelectorAll("#subject-tpl, #body-tpl")
+    .forEach((el) => el.addEventListener("input", updateTemplateCounters));
+  updateTemplateCounters();
 });
 
 // --- SMTP ---
@@ -191,15 +217,15 @@ document.getElementById("test-smtp").addEventListener("click", async () => {
 });
 
 // --- Excel Upload ---
-document.getElementById("excel-file").addEventListener("change", async (e) => {
-  const file = e.target.files[0];
+async function handleExcelFile(file) {
   if (!file) return;
 
   if (!file.name.endsWith(".xlsx") && !file.name.endsWith(".xls")) {
     showError("Please upload only .xlsx or .xls files");
-    e.target.value = "";
     return;
   }
+
+  document.getElementById("upload-file-name").textContent = file.name;
 
   const formData = new FormData();
   formData.append("file", file);
@@ -224,8 +250,25 @@ document.getElementById("excel-file").addEventListener("change", async (e) => {
     setActiveStep(3);
   } catch (e) {
     showError("Upload error: " + e.message);
-    e.target.value = "";
   }
+}
+
+document.getElementById("excel-file").addEventListener("change", async (e) => {
+  await handleExcelFile(e.target.files[0]);
+});
+
+const dropzone = document.getElementById("upload-dropzone");
+dropzone?.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  dropzone.classList.add("border-indigo-500", "bg-indigo-50");
+});
+dropzone?.addEventListener("dragleave", () => {
+  dropzone.classList.remove("border-indigo-500", "bg-indigo-50");
+});
+dropzone?.addEventListener("drop", async (event) => {
+  event.preventDefault();
+  dropzone.classList.remove("border-indigo-500", "bg-indigo-50");
+  await handleExcelFile(event.dataTransfer.files[0]);
 });
 
 function showUploadPreview(data) {
@@ -235,13 +278,13 @@ function showUploadPreview(data) {
   let html = "<thead><tr>";
   data.columns.forEach(
     (col) =>
-      (html += `<th class="p-2 border bg-gray-50 font-semibold">${col}</th>`),
+      (html += `<th class="p-2 border bg-gray-50 font-semibold">${escapeHtml(col)}</th>`),
   );
   html += "</tr></thead><tbody>";
   data.preview_rows.forEach((row) => {
     html += "<tr>";
     data.columns.forEach(
-      (col) => (html += `<td class="p-2 border">${row[col] || ""}</td>`),
+      (col) => (html += `<td class="p-2 border">${escapeHtml(row[col] || "")}</td>`),
     );
     html += "</tr>";
   });
@@ -488,6 +531,8 @@ document.getElementById("save-mapping").addEventListener("click", async () => {
 function initializeTemplateSelector() {
   const selector = document.getElementById("template-selector");
   if (!selector) return;
+  if (selector.dataset.initialized === "true") return;
+  selector.dataset.initialized = "true";
 
   selector.addEventListener("change", (e) => {
     const templateKey = e.target.value;
@@ -495,6 +540,7 @@ function initializeTemplateSelector() {
       const template = emailTemplates[templateKey];
       document.getElementById("subject-tpl").value = template.subject;
       document.getElementById("body-tpl").value = template.body;
+      updateTemplateCounters();
       showSuccess("Template loaded! You can customize it as needed.");
     }
   });
@@ -531,9 +577,9 @@ function renderPreview(previews) {
     .map(
       (p) => `
     <div class="border rounded-lg p-4 bg-gray-50 shadow-sm">
-      <p class="mb-2"><strong>To:</strong> ${p.name} <${p.email}></p>
-      <p class="mb-2"><strong>Subject:</strong> ${p.subject}</p>
-      <div class="mt-2 p-3 bg-white border rounded">${p.body}</div>
+      <p class="mb-2"><strong>To:</strong> ${escapeHtml(p.name)} &lt;${escapeHtml(p.email)}&gt;</p>
+      <p class="mb-2"><strong>Subject:</strong> ${escapeHtml(p.subject)}</p>
+      <iframe class="mt-2 h-72 w-full rounded border bg-white" sandbox="" srcdoc="${escapeHtml(p.body)}"></iframe>
     </div>
   `,
     )
@@ -570,9 +616,9 @@ function showResults(data) {
   document.getElementById("results-container").classList.remove("hidden");
   const summary = document.getElementById("results-summary");
   summary.innerHTML = `
-    <span class="px-4 py-2 bg-green-100 text-green-800 rounded-full font-semibold">✅ ${data.success} sent</span>
-    <span class="px-4 py-2 bg-red-100 text-red-800 rounded-full font-semibold">❌ ${data.failed} failed</span>
-    <span class="px-4 py-2 bg-blue-100 text-blue-800 rounded-full font-semibold">📊 Total: ${data.total}</span>
+    <span class="px-4 py-2 bg-green-100 text-green-800 rounded-full font-semibold">${escapeHtml(data.success)} sent</span>
+    <span class="px-4 py-2 bg-red-100 text-red-800 rounded-full font-semibold">${escapeHtml(data.failed)} failed</span>
+    <span class="px-4 py-2 bg-blue-100 text-blue-800 rounded-full font-semibold">Total: ${escapeHtml(data.total)}</span>
   `;
 
   const tbody = document.getElementById("results-table");
@@ -580,14 +626,14 @@ function showResults(data) {
     .map(
       (r) => `
     <tr class="hover:bg-gray-50">
-      <td class="p-2 border">${r.email}</td>
-      <td class="p-2 border">${r.name}</td>
+      <td class="p-2 border">${escapeHtml(r.email)}</td>
+      <td class="p-2 border">${escapeHtml(r.name)}</td>
       <td class="p-2 border">
         <span class="px-2 py-1 rounded text-xs font-semibold ${r.status === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}">
-          ${r.status}
+          ${escapeHtml(r.status)}
         </span>
       </td>
-      <td class="p-2 border text-sm text-red-600">${r.error || "-"}</td>
+      <td class="p-2 border text-sm text-red-600">${escapeHtml(r.error || "-")}</td>
     </tr>
   `,
     )
@@ -635,12 +681,12 @@ function showHistoryModal(history) {
               .map(
                 (h) => `
               <tr class="border-b hover:bg-gray-50">
-                <td class="p-2">${new Date(h.sent_at).toLocaleString()}</td>
-                <td class="p-2">${h.recipient_name} <${h.recipient_email}></td>
-                <td class="p-2">${h.subject}</td>
+                <td class="p-2">${escapeHtml(new Date(h.sent_at).toLocaleString())}</td>
+                <td class="p-2">${escapeHtml(h.recipient_name)} &lt;${escapeHtml(h.recipient_email)}&gt;</td>
+                <td class="p-2">${escapeHtml(h.subject)}</td>
                 <td class="p-2">
                   <span class="px-2 py-1 rounded text-xs ${h.status === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}">
-                    ${h.status}
+                    ${escapeHtml(h.status)}
                   </span>
                 </td>
               </tr>

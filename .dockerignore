@@ -1,45 +1,14 @@
-# Git
 .git
 .gitignore
-
-# Python
-__pycache__
-*.pyc
-*.pyo
-*.pyd
-.Python
-*.so
-*.egg
-*.egg-info
-dist
-build
-.pytest_cache
-.coverage
-
-# IDE
-.vscode
-.idea
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Project specific
-uploads/*
-!uploads/.gitkeep
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
 data/*
 !data/.gitkeep
-test.py
-*.log
-
-# Docker
-docker-compose.yml
-Dockerfile
-.dockerignore
-
-# Documentation
-README.md
-LICENSE
+uploads/*
+!uploads/.gitkeep
+.DS_Store
