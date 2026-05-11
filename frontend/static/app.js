@@ -11,6 +11,8 @@ const api = (url, method = "GET", body = null) => {
   });
 };
 
+const MASKED_PASSWORD = "********";
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -105,7 +107,7 @@ async function loadSavedSMTPConfig() {
       document.getElementById("smtp_port").value = config.port;
       document.getElementById("smtp_user").value = config.username;
       document.getElementById("from_email").value = config.from_email;
-      // Don't populate password for security
+      document.getElementById("smtp_pass").value = MASKED_PASSWORD;
       document.getElementById("smtp-status").innerText = "Config loaded";
       setActiveStep(2);
     }

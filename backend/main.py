@@ -26,6 +26,7 @@ UPLOAD_DIR = Path(os.getenv("EVENT_NOTIFIER_UPLOAD_DIR", "uploads"))
 MAX_UPLOAD_MB = int(os.getenv("EVENT_NOTIFIER_MAX_UPLOAD_MB", "10"))
 MAX_RECIPIENTS = int(os.getenv("EVENT_NOTIFIER_MAX_RECIPIENTS", "1000"))
 MAX_TEMPLATE_CHARS = int(os.getenv("EVENT_NOTIFIER_MAX_TEMPLATE_CHARS", "50000"))
+MASKED_PASSWORD = "********"
 
 app = FastAPI(
     title="Event Notification Sender",
@@ -132,6 +133,15 @@ async def configure_smtp(config: SMTPConfig, request: Request):
         store._data[sid] = data
 
     config_dict = config.model_dump()
+    if config_dict["password"] == MASKED_PASSWORD:
+        saved_config = database.get_smtp_config()
+        if not saved_config or not saved_config.get("password"):
+            raise HTTPException(
+                status_code=400,
+                detail="Saved SMTP password was not found. Please enter it again."
+            )
+        config_dict["password"] = saved_config["password"]
+
     error = validate_smtp_config(config_dict)
     if error:
         raise HTTPException(status_code=400, detail=error)
@@ -153,7 +163,7 @@ async def get_smtp_config(request: Request):
     config = database.get_smtp_config()
     if config:
         # Mask password for security
-        config["password"] = "********"
+        config["password"] = MASKED_PASSWORD
         return config
     return {"message": "No SMTP configuration found"}
 
