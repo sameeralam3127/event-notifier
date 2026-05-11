@@ -12,7 +12,7 @@ map Name/Email columns, write personalized messages, preview, and send bulk emai
 - **SMTP Support** - Gmail, Outlook, or custom SMTP with TLS/SSL. Test connection with one click
 - **Excel Upload** - Supports `.xlsx` and `.xls`. Auto-detects Name and Email columns using regex
 - **Custom Mail-Merge** - Use `{ColumnName}` placeholders in subject and HTML body
-- **Live Preview** - See exactly what the first 5 recipients will receive
+- **Live Preview** - See exactly what the first recipient will receive
 - **Detailed Results** - Success/failure per recipient with error messages
 - **Modern UI** - Step-by-step wizard built with Tailwind CSS
 - **Dockerized** - Run with a single command. SQLite database for persistence
@@ -126,7 +126,7 @@ The Team
 
 ### Step 4: Preview & Send
 
-1. Click **Preview Emails** to see how the first 5 emails will look
+1. Click **Preview Emails** to see how the first email will look
 2. Review the merged content
 3. Click **Send to All** to send emails to all recipients
 4. View detailed results with success/failure status
@@ -163,6 +163,7 @@ docker run -d \
   -e APP_ENV=production \
   -e EVENT_NOTIFIER_MAX_UPLOAD_MB=10 \
   -e EVENT_NOTIFIER_MAX_RECIPIENTS=1000 \
+  -e EVENT_NOTIFIER_SMTP_WORKERS=4 \
   -e EVENT_NOTIFIER_SECURE_COOKIES=false \
   -e EVENT_NOTIFIER_DB_PATH=/app/data/event_notifier.db \
   -e EVENT_NOTIFIER_UPLOAD_DIR=/app/uploads \
@@ -194,6 +195,10 @@ docker run -d \
 - **Password Masking**: Passwords are masked when retrieving saved config
 - **Session Management**: Secure session handling with HTTP-only cookies
 - **Safe Rendering**: Uploaded spreadsheet values and history data are escaped in the UI
+
+### Sending Scale
+
+The current batch limit is `EVENT_NOTIFIER_MAX_RECIPIENTS=1000`. Sending uses a bounded SMTP worker pool controlled by `EVENT_NOTIFIER_SMTP_WORKERS` with a default of `4`, so large batches send faster without opening too many SMTP connections at once. Keep this value aligned with your SMTP provider's connection and rate limits.
 
 ## API Endpoints
 

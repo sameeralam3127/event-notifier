@@ -1,8 +1,9 @@
 import smtplib
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Tuple
 import logging
 import ssl
 
@@ -72,20 +73,120 @@ def send_test_email(config: Dict, to_email: str) -> Dict:
     return result
 
 
+def _connect_smtp(config: Dict):
+    use_ssl = int(config["port"]) == 465
+    use_tls = int(config["port"]) == 587
+    context = ssl.create_default_context()
+    username = config["username"].strip().replace('\xa0', ' ').strip()
+    password = config["password"].strip().replace('\xa0', ' ').strip()
+
+    if use_ssl:
+        server = smtplib.SMTP_SSL(
+            config["host"], int(config["port"]), timeout=15, context=context
+        )
+    else:
+        server = smtplib.SMTP(config["host"], int(config["port"]), timeout=15)
+        if use_tls:
+            server.starttls(context=context)
+    server.login(username, password)
+    return server
+
+
+def _send_recipient(server, config: Dict, row: Dict, subject_template: str, body_template: str) -> Dict:
+    from .mail_merger import merge
+
+    to_email = row.get("email", "")
+    to_name = row.get("name", "")
+
+    if not to_email:
+        return {
+            "email": "",
+            "name": to_name,
+            "status": "failed",
+            "error": "Missing email",
+        }
+
+    subject = merge(subject_template, row)
+    body = merge(body_template, row)
+    msg = MIMEMultipart("alternative")
+    msg["From"] = formataddr(("", config["from_email"]))
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "html"))
+
+    server.send_message(msg)
+    return {"email": to_email, "name": to_name, "status": "success", "error": None}
+
+
+def _send_chunk(
+    indexed_recipients: List[Tuple[int, Dict]],
+    config: Dict,
+    subject_template: str,
+    body_template: str,
+) -> List[Tuple[int, Dict]]:
+    server = None
+    results = []
+    try:
+        server = _connect_smtp(config)
+    except Exception as e:
+        logger.exception("SMTP connection failed")
+        return [
+            (
+                index,
+                {
+                    "email": row.get("email"),
+                    "name": row.get("name"),
+                    "status": "failed",
+                    "error": str(e),
+                },
+            )
+            for index, row in indexed_recipients
+        ]
+
+    try:
+        for index, row in indexed_recipients:
+            try:
+                results.append(
+                    (
+                        index,
+                        _send_recipient(server, config, row, subject_template, body_template),
+                    )
+                )
+            except Exception as e:
+                to_email = row.get("email", "")
+                logger.warning(f"Failed to send to {to_email}: {e}")
+                results.append(
+                    (
+                        index,
+                        {
+                            "email": to_email,
+                            "name": row.get("name", ""),
+                            "status": "failed",
+                            "error": str(e),
+                        },
+                    )
+                )
+    finally:
+        try:
+            if server:
+                server.quit()
+        except Exception:
+            logger.debug("Failed to close SMTP connection", exc_info=True)
+    return results
+
+
 def send_bulk_emails(
     config: Dict,
     recipients: List[Dict],
     subject_template: str,
     body_template: str,
-    max_recipients: int = 500,
+    max_recipients: int = 1000,
+    worker_count: int = 4,
 ) -> List[Dict]:
     """
     Send personalised emails to all recipients.
     Returns list of dicts: {email, name, status, error}
     """
-    from .mail_merger import merge
-
-    results = []
     if len(recipients) > max_recipients:
         raise ValueError(
             f"Recipient limit {max_recipients} exceeded. Please split the file."
@@ -103,78 +204,22 @@ def send_bulk_emails(
             for r in recipients
         ]
 
-    use_ssl = int(config["port"]) == 465
-    use_tls = int(config["port"]) == 587
-    context = ssl.create_default_context()
+    worker_count = max(1, min(int(worker_count), 10, len(recipients) or 1))
+    chunk_size = (len(recipients) + worker_count - 1) // worker_count
+    indexed_recipients = list(enumerate(recipients))
+    chunks = [
+        indexed_recipients[i:i + chunk_size]
+        for i in range(0, len(indexed_recipients), chunk_size)
+    ]
 
-    # Sanitize credentials to remove non-ASCII characters and whitespace
-    username = config["username"].strip().replace('\xa0', ' ').strip()
-    password = config["password"].strip().replace('\xa0', ' ').strip()
-
-    server = None
-    try:
-        if use_ssl:
-            server = smtplib.SMTP_SSL(
-                config["host"], int(config["port"]), timeout=15, context=context
-            )
-        else:
-            server = smtplib.SMTP(config["host"], int(config["port"]), timeout=15)
-            if use_tls:
-                server.starttls(context=context)
-        server.login(username, password)
-    except Exception as e:
-        logger.exception("SMTP connection failed")
-        return [
-            {
-                "email": r.get("email"),
-                "name": r.get("name"),
-                "status": "failed",
-                "error": str(e),
-            }
-            for r in recipients
+    ordered_results = [None] * len(recipients)
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        futures = [
+            executor.submit(_send_chunk, chunk, config, subject_template, body_template)
+            for chunk in chunks
         ]
+        for future in as_completed(futures):
+            for index, result in future.result():
+                ordered_results[index] = result
 
-    for row in recipients:
-        try:
-            subject = merge(subject_template, row)
-            body = merge(body_template, row)
-            to_email = row.get("email", "")
-            to_name = row.get("name", "")
-
-            if not to_email:
-                results.append(
-                    {
-                        "email": "",
-                        "name": to_name,
-                        "status": "failed",
-                        "error": "Missing email",
-                    }
-                )
-                continue
-
-            msg = MIMEMultipart("alternative")
-            msg["From"] = formataddr(("", config["from_email"]))
-            msg["To"] = to_email
-            msg["Subject"] = subject
-            msg.attach(MIMEText(body, "html"))
-
-            server.send_message(msg)
-            results.append(
-                {"email": to_email, "name": to_name, "status": "success", "error": None}
-            )
-        except Exception as e:
-            logger.warning(f"Failed to send to {to_email}: {e}")
-            results.append(
-                {
-                    "email": to_email,
-                    "name": to_name,
-                    "status": "failed",
-                    "error": str(e),
-                }
-            )
-
-    try:
-        server.quit()
-    except:
-        pass
-    return results
+    return ordered_results

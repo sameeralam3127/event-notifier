@@ -26,6 +26,7 @@ UPLOAD_DIR = Path(os.getenv("EVENT_NOTIFIER_UPLOAD_DIR", "uploads"))
 MAX_UPLOAD_MB = int(os.getenv("EVENT_NOTIFIER_MAX_UPLOAD_MB", "10"))
 MAX_RECIPIENTS = int(os.getenv("EVENT_NOTIFIER_MAX_RECIPIENTS", "1000"))
 MAX_TEMPLATE_CHARS = int(os.getenv("EVENT_NOTIFIER_MAX_TEMPLATE_CHARS", "50000"))
+SMTP_WORKERS = int(os.getenv("EVENT_NOTIFIER_SMTP_WORKERS", "4"))
 MASKED_PASSWORD = "********"
 
 app = FastAPI(
@@ -379,7 +380,7 @@ async def preview(template: TemplateRequest, request: Request):
         prepared_rows,
         template.subject,
         template.body,
-        count=5
+        count=1
     )
     return previews
 
@@ -433,7 +434,12 @@ async def send_emails(template: TemplateRequest, request: Request):
 
     try:
         results = send_bulk_emails(
-            smtp, recipients, template.subject, template.body
+            smtp,
+            recipients,
+            template.subject,
+            template.body,
+            max_recipients=MAX_RECIPIENTS,
+            worker_count=SMTP_WORKERS,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
