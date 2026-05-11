@@ -60,9 +60,9 @@ def send_test_email(config: Dict, to_email: str) -> Dict:
         result["success"] = True
         result["message"] = "Test email sent successfully!"
     except smtplib.SMTPAuthenticationError:
-        result["message"] = "Authentication failed – check username/password."
+        result["message"] = "Authentication failed - check username/password."
     except smtplib.SMTPConnectError:
-        result["message"] = "Cannot connect to SMTP server – check host/port."
+        result["message"] = "Cannot connect to SMTP server - check host/port."
     except smtplib.SMTPException as e:
         result["message"] = f"SMTP error: {e}"
     except Exception as e:

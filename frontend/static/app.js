@@ -106,7 +106,7 @@ async function loadSavedSMTPConfig() {
       document.getElementById("smtp_user").value = config.username;
       document.getElementById("from_email").value = config.from_email;
       // Don't populate password for security
-      document.getElementById("smtp-status").innerText = "✅ Config loaded";
+      document.getElementById("smtp-status").innerText = "Config loaded";
       setActiveStep(2);
     }
   } catch (e) {
@@ -172,7 +172,7 @@ document.getElementById("save-smtp").addEventListener("click", async () => {
 
   try {
     await api("/api/configure-smtp", "POST", config);
-    document.getElementById("smtp-status").innerText = "✅ Saved";
+    document.getElementById("smtp-status").innerText = "Saved";
     showSuccess("SMTP configuration saved successfully");
     setActiveStep(2);
   } catch (e) {
@@ -201,14 +201,14 @@ document.getElementById("test-smtp").addEventListener("click", async () => {
 
   try {
     const res = await api("/api/test-smtp", "POST");
-    status.innerText = res.success ? "✅ " + res.message : "❌ " + res.message;
+    status.innerText = res.success ? res.message : "Failed: " + res.message;
     if (res.success) {
       showSuccess(res.message);
     } else {
       showError(res.message);
     }
   } catch (e) {
-    status.innerText = "❌ " + e.message;
+    status.innerText = "Failed: " + e.message;
     showError(e.message);
   } finally {
     btn.disabled = false;
@@ -311,7 +311,7 @@ function populateColumnSelects(columns, guessedName, guessedEmail) {
 // --- Email Templates ---
 const emailTemplates = {
   "event-confirmation": {
-    subject: "✅ Your Event Registration is Confirmed - {Name}",
+    subject: "Your Event Registration is Confirmed - {Name}",
     body: `<!DOCTYPE html>
 <html>
 <head>
@@ -327,16 +327,16 @@ const emailTemplates = {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎉 Registration Confirmed!</h1>
+      <h1>Registration Confirmed!</h1>
     </div>
     <div class="content">
       <p>Dear <strong>{Name}</strong>,</p>
       <p>Great news! Your registration for our event has been successfully confirmed.</p>
       <p><strong>Event Details:</strong></p>
       <ul>
-        <li>📅 Date: [Event Date]</li>
-        <li>🕐 Time: [Event Time]</li>
-        <li>📍 Location: [Event Location]</li>
+        <li>Date: [Event Date]</li>
+        <li>Time: [Event Time]</li>
+        <li>Location: [Event Location]</li>
       </ul>
       <p>We're excited to have you join us! Please keep this email for your records.</p>
       <p>If you have any questions, feel free to reply to this email.</p>
@@ -351,7 +351,7 @@ const emailTemplates = {
 </html>`,
   },
   "event-reminder": {
-    subject: "⏰ Reminder: Event Tomorrow - {Name}",
+    subject: "Reminder: Event Tomorrow - {Name}",
     body: `<!DOCTYPE html>
 <html>
 <head>
@@ -366,14 +366,14 @@ const emailTemplates = {
 <body>
   <div class="container">
     <div class="header">
-      <h1>⏰ Event Reminder</h1>
+      <h1>Event Reminder</h1>
     </div>
     <div class="content">
       <p>Hi <strong>{Name}</strong>,</p>
       <p>This is a friendly reminder that our event is coming up soon!</p>
       <div class="highlight">
-        <p><strong>📅 Tomorrow at [Event Time]</strong></p>
-        <p>📍 Location: [Event Location]</p>
+        <p><strong>Tomorrow at [Event Time]</strong></p>
+        <p>Location: [Event Location]</p>
       </div>
       <p>We're looking forward to seeing you there. Don't forget to bring:</p>
       <ul>
@@ -389,7 +389,7 @@ const emailTemplates = {
 </html>`,
   },
   "event-invitation": {
-    subject: "🎉 You're Invited! Join Us for [Event Name]",
+    subject: "You're Invited! Join Us for [Event Name]",
     body: `<!DOCTYPE html>
 <html>
 <head>
@@ -404,16 +404,16 @@ const emailTemplates = {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎉 You're Invited!</h1>
+      <h1>You're Invited!</h1>
     </div>
     <div class="content">
       <p>Dear <strong>{Name}</strong>,</p>
       <p>We are delighted to invite you to our upcoming event!</p>
       <p><strong>Event Details:</strong></p>
       <ul>
-        <li>📅 Date: [Event Date]</li>
-        <li>🕐 Time: [Event Time]</li>
-        <li>📍 Venue: [Event Location]</li>
+        <li>Date: [Event Date]</li>
+        <li>Time: [Event Time]</li>
+        <li>Venue: [Event Location]</li>
       </ul>
       <p>This is a special opportunity to [brief description of event purpose].</p>
       <p>Please RSVP by [RSVP Date] to confirm your attendance.</p>
@@ -425,7 +425,7 @@ const emailTemplates = {
 </html>`,
   },
   "event-update": {
-    subject: "📢 Important Update: Event Information - {Name}",
+    subject: "Important Update: Event Information - {Name}",
     body: `<!DOCTYPE html>
 <html>
 <head>
@@ -440,7 +440,7 @@ const emailTemplates = {
 <body>
   <div class="container">
     <div class="header">
-      <h1>📢 Event Update</h1>
+      <h1>Event Update</h1>
     </div>
     <div class="content">
       <p>Hi <strong>{Name}</strong>,</p>
@@ -451,9 +451,9 @@ const emailTemplates = {
       </div>
       <p><strong>Updated Event Details:</strong></p>
       <ul>
-        <li>📅 Date: [Event Date]</li>
-        <li>🕐 Time: [Event Time]</li>
-        <li>📍 Location: [Event Location]</li>
+        <li>Date: [Event Date]</li>
+        <li>Time: [Event Time]</li>
+        <li>Location: [Event Location]</li>
       </ul>
       <p>Your registration remains valid. If you have any questions or concerns, please don't hesitate to contact us.</p>
       <p>Thank you for your understanding!</p>
@@ -464,7 +464,7 @@ const emailTemplates = {
 </html>`,
   },
   "thank-you": {
-    subject: "🙏 Thank You for Attending - {Name}",
+    subject: "Thank You for Attending - {Name}",
     body: `<!DOCTYPE html>
 <html>
 <head>
@@ -478,7 +478,7 @@ const emailTemplates = {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🙏 Thank You!</h1>
+      <h1>Thank You!</h1>
     </div>
     <div class="content">
       <p>Dear <strong>{Name}</strong>,</p>

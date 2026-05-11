@@ -1,25 +1,25 @@
-# 📨 Event Notification Sender
+# Event Notification Sender
 
-A modern, self-hosted bulk email tool with a clean web UI and persistent storage.  
-Upload an Excel file, configure your SMTP server (Gmail with App Password supported),  
+A modern, self-hosted bulk email tool with a clean web UI and persistent storage.
+Upload an Excel file, configure your SMTP server (Gmail with App Password supported),
 map Name/Email columns, write personalized messages, preview, and send bulk emails with full history tracking.
 
-## ✨ Features
+## Features
 
-- **🔐 Persistent SMTP Config** – Save your SMTP settings securely in SQLite database
-- **📊 Email History Tracking** – Complete audit trail of all sent emails with success/failure status
-- **📈 Statistics Dashboard** – View total emails sent, success rate, and batch history
-- **🔧 SMTP Support** – Gmail, Outlook, or custom SMTP with TLS/SSL. Test connection with one click
-- **📁 Excel Upload** – Supports `.xlsx` and `.xls`. Auto-detects Name and Email columns using regex
-- **✉️ Custom Mail-Merge** – Use `{ColumnName}` placeholders in subject and HTML body
-- **👀 Live Preview** – See exactly what the first 5 recipients will receive
-- **📋 Detailed Results** – Success/failure per recipient with error messages
-- **🎨 Modern UI** – Step-by-step wizard built with Tailwind CSS
-- **🐳 Dockerized** – Run with a single command. SQLite database for persistence
-- **✅ Input Validation** – Comprehensive validation and error handling
-- **🔒 Security** – Password masking, file size limits, and sanitized inputs
+- **Persistent SMTP Config** - Save your SMTP settings securely in SQLite database
+- **Email History Tracking** - Complete audit trail of all sent emails with success/failure status
+- **Statistics Dashboard** - View total emails sent, success rate, and batch history
+- **SMTP Support** - Gmail, Outlook, or custom SMTP with TLS/SSL. Test connection with one click
+- **Excel Upload** - Supports `.xlsx` and `.xls`. Auto-detects Name and Email columns using regex
+- **Custom Mail-Merge** - Use `{ColumnName}` placeholders in subject and HTML body
+- **Live Preview** - See exactly what the first 5 recipients will receive
+- **Detailed Results** - Success/failure per recipient with error messages
+- **Modern UI** - Step-by-step wizard built with Tailwind CSS
+- **Dockerized** - Run with a single command. SQLite database for persistence
+- **Input Validation** - Comprehensive validation and error handling
+- **Security** - Password masking, file size limits, and sanitized inputs
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Option 1: Docker Hub (Recommended)
 
@@ -62,7 +62,7 @@ docker run -d -p 8000:8000 \
   event-notifier
 ```
 
-## 📖 Usage Guide
+## Usage Guide
 
 ### Step 1: Configure SMTP
 
@@ -133,14 +133,14 @@ The Team
 
 ### View History
 
-Click **📊 View History** to see:
+Click **View History** to see:
 
 - All previously sent emails
 - Batch statistics
 - Success/failure rates
 - Error messages for failed emails
 
-## 🗄️ Data Persistence
+## Data Persistence
 
 All data is stored in SQLite database at `/app/data/event_notifier.db`:
 
@@ -151,7 +151,7 @@ All data is stored in SQLite database at `/app/data/event_notifier.db`:
 
 The database is persisted using Docker volumes, so your data survives container restarts.
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -185,7 +185,7 @@ docker run -d \
 - Supports `EVENT_NOTIFIER_SECURE_COOKIES=true` when served behind HTTPS
 - Uses named Docker volumes in production compose and bind mounts in dev compose
 
-## 🛡️ Security Features
+## Security Features
 
 - **Password Sanitization**: Removes non-ASCII characters that cause authentication errors
 - **Input Validation**: Validates email addresses, file types, and sizes
@@ -195,7 +195,7 @@ docker run -d \
 - **Session Management**: Secure session handling with HTTP-only cookies
 - **Safe Rendering**: Uploaded spreadsheet values and history data are escaped in the UI
 
-## 📊 API Endpoints
+## API Endpoints
 
 The application provides REST API endpoints:
 
@@ -211,7 +211,7 @@ The application provides REST API endpoints:
 - `GET /api/statistics` - Get overall statistics
 - `GET /health` - Health check endpoint
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### SMTP Authentication Errors
 
@@ -235,7 +235,7 @@ If you see "UnicodeEncodeError" or authentication failures:
 - For Gmail, ensure "Less secure app access" is not required
 - Test with the built-in connection test feature
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
@@ -245,17 +245,17 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Built with [FastAPI](https://fastapi.tiangolo.com/)
 - UI styled with [Tailwind CSS](https://tailwindcss.com/)
 - Excel parsing with [openpyxl](https://openpyxl.readthedocs.io/)
 
-## 📧 Support
+## Support
 
 For issues, questions, or suggestions:
 
@@ -264,4 +264,4 @@ For issues, questions, or suggestions:
 
 ---
 
-Made with ❤️ by Sameer Alam
+Made by Sameer Alam
